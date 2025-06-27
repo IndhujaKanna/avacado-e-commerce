@@ -5,6 +5,10 @@ const ownerModel=require("../models/owner_model");
 router.get("/",function(req,res){
     res.send("hey")
 });
+router.get("/admin",function(req,res){
+    const success = req.flash("success");
+    res.render("createproducts",{success})
+});
 
 //console.log(process.env.NODE_ENV);
 if(process.env.NODE_ENV  ==="development"){
