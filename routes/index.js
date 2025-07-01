@@ -74,9 +74,7 @@ router.get("/myaccount", isLoggedin, async (req, res) => {
 
 router.post('/remove-from-cart/:id', isLoggedin, async (req, res) => {
     let user = await userModel.findOne({ email: req.user.email });
-    console.log(user.cart)
     user.cart = user.cart.filter(item => item.product.toString() !== req.params.id);
-    console.log(user.cart)
     await user.save();
     res.redirect("/cart");
 
@@ -92,7 +90,8 @@ router.get("/shop/discounted", isLoggedin, async function (req, res) {
         res.render("shop", { products, success: success[0], error: error[0] });
     } catch (err) {
         console.error(err.message);
-        res.status(500).send("Internal Server Error");
+        req.flash("Internal Server Error");
+        res.redirect("/shop");
     }
 });
 

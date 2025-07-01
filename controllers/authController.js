@@ -130,6 +130,8 @@ module.exports.registerUser = async function (req, res) {
 
     catch (err) {
         console.log(err.message)
+        req.flash("error", "Internal Server Error");
+        return res.redirect("/")
     }
 
 };

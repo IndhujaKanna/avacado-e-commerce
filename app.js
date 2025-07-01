@@ -1,7 +1,7 @@
 const express =require("express");
 const app=express();
 const expressSession=require("express-session")
-
+const PORT = process.env.PORT || 3000;
 const flash=require("connect-flash")
 require('dotenv').config();
 
@@ -33,4 +33,6 @@ app.use("/users",usersRouter)
 app.use("/products",productsRouter)
 
 
-app.listen(3000)
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
