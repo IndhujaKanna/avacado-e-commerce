@@ -19,6 +19,7 @@ module.exports.registerAdmin = async function (req, res) {
             bcrypt.hash(password, salt, async function (err, hash) {
                 if (err) {
                     req.flash("error", "Something went wrong during login")
+                    console.log(err);
                     return res.redirect("/owners/admin")
                 }
                 else {
@@ -129,7 +130,7 @@ module.exports.registerUser = async function (req, res) {
     }
 
     catch (err) {
-        console.log(err.message)
+        console.log(err)
         req.flash("error", "Internal Server Error");
         return res.redirect("/")
     }
