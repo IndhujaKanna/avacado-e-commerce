@@ -4,13 +4,58 @@ const productModel = require("../models/product_model");
 const userModel = require("../models/user_model");
 const orderModel = require("../models/order_model");
 const router = express.Router();
+const gateway = require("../config/braintree");
+
+router.get("/payment/token", async (req, res) => {
+  gateway.clientToken.generate({}, function (err, response) {
+    if (err) return res.status(500).send(err);
+    res.send({ token: response.clientToken });
+  });
+});
+
+
+router.post("/payment/checkout", isLoggedin, async (req, res) => {
+  const { paymentMethodNonce, amount } = req.body;
+
+  gateway.transaction.sale(
+    {
+      amount,
+      paymentMethodNonce,
+      options: { submitForSettlement: true },
+    },
+    async (err, result) => {
+      if (err || !result.success) {
+        console.error(err || result.message);
+        req.flash("error", "Transaction failed.");
+        return res.redirect("/cart");
+      }
+
+      const user = await userModel
+        .findOne({ email: req.user.email })
+        .populate("cart.product");
+
+      await orderModel.create({
+        user: user._id,
+        items: user.cart,
+        totalAmount: amount,
+      });
+
+      user.cart = [];
+      await user.save();
+
+      req.flash("success", "Payment successful! Order placed.");
+      res.redirect("/orders");
+    }
+  );
+});
+
+
 
 router.get("/", function (req, res) {
     let error = req.flash("error"); // gets the flash message array
     let success = req.flash("success"); // gets the flash message array
     res.render("index", { error: error.length > 0 ? error[0] : "", loggedin: false, success: success[0] }); // sends the actual message
 });
-
 
 router.get("/myaccount", isLoggedin, async (req, res) => {
     try {
@@ -145,52 +190,38 @@ router.get("/shop", isLoggedin, async function (req, res) {
 });
 
 
-router.post("/checkout", isLoggedin, async function (req, res) {
-    try {
-        let user = await userModel
-            .findOne({ email: req.user.email })
-            .populate("cart.product"); // <-- important
+router.get("/checkout", isLoggedin, async (req, res) => {
+  try {
+    const user = await userModel
+      .findOne({ email: req.user.email })
+      .populate("cart.product");
 
-        if (!user || !user.cart || user.cart.length === 0) {
-            req.flash("error", "Cart is empty.");
-            return res.redirect("/cart");
-        }
-
-        // Calculate total
-        let totalMRP = 0;
-        let totalDiscount = 0;
-        const platformFee = 20;
-
-        user.cart.forEach(item => {
-            const price = Number(item.product.price);
-            const discount = Number(item.product.discount);
-            if (!isNaN(price) && !isNaN(discount)) {
-                totalMRP += price;
-                totalDiscount += (price * discount / 100);
-            }
-        });
-
-        const finalAmount = Math.round(totalMRP - totalDiscount + platformFee);
-
-        // Save order
-        await orderModel.create({
-            user: user._id,
-            items: user.cart,
-            totalAmount: finalAmount
-        });
-
-        // Clear cart
-        user.cart = [];
-        await user.save();
-
-        req.flash("success", "Checkout complete! Your order has been placed.");
-        res.redirect("/cart");
-    } catch (err) {
-        console.error(err.message);
-        req.flash("error", "Checkout failed. Please try again.");
-        res.redirect("/cart");
+    if (!user.cart.length) {
+      req.flash("error", "Your cart is empty");
+      return res.redirect("/cart");
     }
+
+    const platformFee = 20;
+    let totalMRP = 0;
+    let totalDiscount = 0;
+
+    user.cart.forEach(item => {
+      const price = Number(item.product.price);
+      const discount = Number(item.product.discount);
+      totalMRP += price * item.quantity;
+      totalDiscount += ((price * discount) / 100) * item.quantity;
+    });
+
+    const finalAmount = Math.round(totalMRP - totalDiscount + platformFee);
+    res.render("checkout", { finalAmount });
+  } catch (err) {
+    console.error(err.message);
+    req.flash("error", "Unable to load checkout page.");
+    res.redirect("/cart");
+  }
 });
+
+
 
 
 router.get("/orders", isLoggedin, async (req, res) => {

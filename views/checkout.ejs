@@ -1,0 +1,55 @@
+<%- include('./partials/header') %>
+
+<div class="max-w-xl mx-auto mt-20 p-6 bg-white rounded shadow">
+  <h2 class="text-2xl font-bold mb-4">Complete Your Payment</h2>
+  <form id="payment-form" method="post" action="/payment/checkout">
+    <div id="dropin-container"></div>
+    <input type="hidden" name="amount" value="<%= finalAmount %>" />
+    <button
+      type="submit"
+      class="mt-4 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+    >
+      Pay ₹<%= finalAmount %>
+    </button>
+  </form>
+</div>
+
+<script src="https://js.braintreegateway.com/web/dropin/1.32.1/js/dropin.min.js"></script>
+<script>
+  fetch("/payment/token")
+    .then(res => res.json())
+    .then(data => {
+      braintree.dropin.create({
+        authorization: data.token,
+        container: "#dropin-container",
+      }, function (createErr, instance) {
+        const form = document.getElementById("payment-form");
+        form.addEventListener("submit", function (event) {
+          event.preventDefault();
+          instance.requestPaymentMethod((err, payload) => {
+            if (err) {
+              alert("Payment failed");
+              return;
+            }
+
+            // Avoid duplicate input issue
+            if (document.getElementById("nonce")) {
+              document.getElementById("nonce").value = payload.nonce;
+            } else {
+              const input = document.createElement("input");
+              input.type = "hidden";
+              input.name = "paymentMethodNonce";
+              input.id = "nonce";
+              input.value = payload.nonce;
+              form.appendChild(input);
+            }
+
+            form.submit();
+          });
+        });
+      });
+    });
+</script>
+
+
+<%- include('./partials/footer') %>

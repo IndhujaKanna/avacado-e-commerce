@@ -1,29 +1,32 @@
 const express =require("express");
 const router=express.Router();
+const {logout_admin}=require("../controllers/authController")
 const ownerModel=require("../models/owner_model");
+const isAdmin = require("../middlewares/isAdmin");
+const isLoggedin=require("../middlewares/isLoggedin")
+const {loginAdmin}=require("../controllers/authController")
+const {registerAdmin}=require("../controllers/authController")
 
-router.get("/",function(req,res){
-    res.send("hey")
-});
+
 router.get("/admin",function(req,res){
-    const success = req.flash("success");
-    res.render("createproducts",{success})
+    const success = req.flash('success','Logged in successfully');
+    const error = req.flash('error');
+    res.render("owner-login", { success,error,loggedin: false});
 });
+
+router.post("/admin",loginAdmin)
+router.post("/admin-register",registerAdmin)
+router.get("/admin-logout",logout_admin);
+
+
+router.get("/adminpanel",isAdmin, function(req, res) {
+    const success = req.flash('success');
+    const error = req.flash('error');
+    res.render("createproducts", { success, error });
+});
+
 
 //console.log(process.env.NODE_ENV);
-if(process.env.NODE_ENV  ==="development"){
-    router.post("/create",async function (req,res) {
-        
-        let owners=await ownerModel.find();
-        if(owners.length>0) return res.status(503).send("You don't have permission to create a new owner");
-        let {fullname,email,password}=req.body;
-        let createdOwner=await ownerModel.create({
-            fullname,
-            email,
-            password
-        });
-        res.status(201).send(createdOwner);
-    })
-}
+
 
 module.exports=router;

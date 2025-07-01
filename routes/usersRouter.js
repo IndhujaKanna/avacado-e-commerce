@@ -5,11 +5,8 @@ const {registerUser}=require("../controllers/authController")
 const {loginUser}=require("../controllers/authController")
 const {logout}=require("../controllers/authController")
 
-router.get("/", function (req, res) {
-    res.send("hey")
-});
-router.get("/logout",logout);
 
+router.get("/logout",logout);
 router.post("/register",registerUser)
 router.post("/login",loginUser)
 module.exports = router;
